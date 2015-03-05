@@ -1067,38 +1067,48 @@ func Min(a ...int) int {
 }
 ```
 
-Append
+### Append
 
 Now we have the missing piece we needed to explain the design of the append built-in function. The signature of append is different from our custom Append function above. Schematically, it's like this:
 
+```go
 func append(slice []T, elements ...T) []T
-where T is a placeholder for any given type. You can't actually write a function in Go where the type T is determined by the caller. That's why append is built in: it needs support from the compiler.
+```
+
+where `T` is a placeholder for any given type. You can't actually write a function in Go where the type `T` is determined by the caller. That's why append is built in: it needs support from the compiler.
 
 What append does is append the elements to the end of the slice and return the result. The result needs to be returned because, as with our hand-written Append, the underlying array may change. This simple example
 
+```go
 x := []int{1,2,3}
 x = append(x, 4, 5, 6)
 fmt.Println(x)
-prints [1 2 3 4 5 6]. So append works a little like Printf, collecting an arbitrary number of arguments.
+```
+
+prints `[1 2 3 4 5 6]`. So append works a little like `Printf`, collecting an arbitrary number of arguments.
 
 But what if we wanted to do what our Append does and append a slice to a slice? Easy: use ... at the call site, just as we did in the call to Output above. This snippet produces identical output to the one above.
 
+```go
 x := []int{1,2,3}
 y := []int{4,5,6}
 x = append(x, y...)
 fmt.Println(x)
-Without that ..., it wouldn't compile because the types would be wrong; y is not of type int.
+```
 
-Initialization
+Without that `...`, it wouldn't compile because the types would be wrong; `y` is not of type `int`.
+
+## Initialization
 
 Although it doesn't look superficially very different from initialization in C or C++, initialization in Go is more powerful. Complex structures can be built during initialization and the ordering issues among initialized objects, even among different packages, are handled correctly.
 
-Constants
+### Constants
 
-Constants in Go are just that—constant. They are created at compile time, even when defined as locals in functions, and can only be numbers, characters (runes), strings or booleans. Because of the compile-time restriction, the expressions that define them must be constant expressions, evaluatable by the compiler. For instance, 1<<3 is a constant expression, while math.Sin(math.Pi/4) is not because the function call to math.Sin needs to happen at run time.
+Constants in Go are just that — constant. They are created at compile time, even when defined as locals in functions, and can only be numbers, characters (runes), strings or booleans. Because of the compile-time restriction, the expressions that define them must be constant expressions, evaluatable by the compiler. For instance, 1<<3 is a constant expression, while math.Sin(math.Pi/4) is not because the function call to `math.Sin` needs to happen at run time.
 
 In Go, enumerated constants are created using the iota enumerator. Since iota can be part of an expression and expressions can be implicitly repeated, it is easy to build intricate sets of values.
 
+```
 type ByteSize float64
 
 const (
@@ -1112,8 +1122,11 @@ const (
     ZB
     YB
 )
+```
+
 The ability to attach a method such as String to any user-defined type makes it possible for arbitrary values to format themselves automatically for printing. Although you'll see it most often applied to structs, this technique is also useful for scalar types such as floating-point types like ByteSize.
 
+```go
 func (b ByteSize) String() string {
     switch {
     case b >= YB:
@@ -1135,7 +1148,9 @@ func (b ByteSize) String() string {
     }
     return fmt.Sprintf("%.2fB", b)
 }
-The expression YB prints as 1.00YB, while ByteSize(1e13) prints as 9.09TB.
+```
+
+The expression `YB` prints as `1.00YB`, while `ByteSize(1e13)` prints as `9.09TB`.
 
 The use here of Sprintf to implement ByteSize's String method is safe (avoids recurring indefinitely) not because of a conversion but because it calls Sprintf with %f, which is not a string format: Sprintf will only call the String method when it wants a string, and %f wants a floating-point value.
 
