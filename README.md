@@ -1154,21 +1154,25 @@ The expression `YB` prints as `1.00YB`, while `ByteSize(1e13)` prints as `9.09TB
 
 The use here of Sprintf to implement ByteSize's String method is safe (avoids recurring indefinitely) not because of a conversion but because it calls Sprintf with %f, which is not a string format: Sprintf will only call the String method when it wants a string, and %f wants a floating-point value.
 
-Variables
+### Variables
 
 Variables can be initialized just like constants but the initializer can be a general expression computed at run time.
 
+```go
 var (
     home   = os.Getenv("HOME")
     user   = os.Getenv("USER")
     gopath = os.Getenv("GOPATH")
 )
-The init function
+```
+
+### The init function
 
 Finally, each source file can define its own niladic init function to set up whatever state is required. (Actually each file can have multiple init functions.) And finally means finally: init is called after all the variable declarations in the package have evaluated their initializers, and those are evaluated only after all the imported packages have been initialized.
 
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 
+```go
 func init() {
     if user == "" {
         log.Fatal("$USER not set")
@@ -1182,52 +1186,67 @@ func init() {
     // gopath may be overridden by --gopath flag on command line.
     flag.StringVar(&gopath, "gopath", gopath, "override default GOPATH")
 }
-Methods
+```
 
-Pointers vs. Values
+## Methods
+
+### Pointers vs. Values
 
 As we saw with ByteSize, methods can be defined for any named type (except a pointer or an interface); the receiver does not have to be a struct.
 
 In the discussion of slices above, we wrote an Append function. We can define it as a method on slices instead. To do this, we first declare a named type to which we can bind the method, and then make the receiver for the method a value of that type.
 
+```go
 type ByteSlice []byte
 
 func (slice ByteSlice) Append(data []byte) []byte {
     // Body exactly the same as above
 }
+```
+
 This still requires the method to return the updated slice. We can eliminate that clumsiness by redefining the method to take a pointer to a ByteSlice as its receiver, so the method can overwrite the caller's slice.
 
+```go
 func (p *ByteSlice) Append(data []byte) {
     slice := *p
     // Body as above, without the return.
     *p = slice
 }
+```
+
 In fact, we can do even better. If we modify our function so it looks like a standard Write method, like this,
 
+```go
 func (p *ByteSlice) Write(data []byte) (n int, err error) {
     slice := *p
     // Again as above.
     *p = slice
     return len(data), nil
 }
+```
+
 then the type *ByteSlice satisfies the standard interface io.Writer, which is handy. For instance, we can print into one.
 
-    var b ByteSlice
-    fmt.Fprintf(&b, "This hour has %d days\n", 7)
+```go
+var b ByteSlice
+fmt.Fprintf(&b, "This hour has %d days\n", 7)
+```
+
 We pass the address of a ByteSlice because only *ByteSlice satisfies io.Writer. The rule about pointers vs. values for receivers is that value methods can be invoked on pointers and values, but pointer methods can only be invoked on pointers.
 
-This rule arises because pointer methods can modify the receiver; invoking them on a value would cause the method to receive a copy of the value, so any modifications would be discarded. The language therefore disallows this mistake. There is a handy exception, though. When the value is addressable, the language takes care of the common case of invoking a pointer method on a value by inserting the address operator automatically. In our example, the variable b is addressable, so we can call its Write method with just b.Write. The compiler will rewrite that to (&b).Write for us.
+This rule arises because pointer methods can modify the receiver; invoking them on a value would cause the method to receive a copy of the value, so any modifications would be discarded. The language therefore disallows this mistake. There is a handy exception, though. When the value is addressable, the language takes care of the common case of invoking a pointer method on a value by inserting the address operator automatically. In our example, the variable b is addressable, so we can call its Write method with just b.Write. The compiler will rewrite that to `(&b).Write` for us.
 
-By the way, the idea of using Write on a slice of bytes is central to the implementation of bytes.Buffer.
+By the way, the idea of using `Write` on a slice of bytes is central to the implementation of `bytes.Buffer`.
 
-Interfaces and other types
+## Interfaces and other types
 
-Interfaces
+### Interfaces
 
-Interfaces in Go provide a way to specify the behavior of an object: if something can do this, then it can be used here. We've seen a couple of simple examples already; custom printers can be implemented by a String method while Fprintf can generate output to anything with a Write method. Interfaces with only one or two methods are common in Go code, and are usually given a name derived from the method, such as io.Writer for something that implements Write.
+Interfaces in Go provide a way to specify the behavior of an object: if something can do this, then it can be used here. We've seen a couple of simple examples already; custom printers can be implemented by a String method while Fprintf can generate output to anything with a Write method. Interfaces with only one or two methods are common in Go code, and are usually given a name derived from the method, such as io.Writer for something that implements `Write`.
 
 A type can implement multiple interfaces. For instance, a collection can be sorted by the routines in package sort if it implements sort.Interface, which contains Len(), Less(i, j int) bool, and Swap(i, j int), and it could also have a custom formatter. In this contrived example Sequence satisfies both.
 
+```go
 type Sequence []int
 
 // Methods required by sort.Interface.
@@ -1253,6 +1272,8 @@ func (s Sequence) String() string {
     }
     return str + "]"
 }
+```
+
 Conversions
 
 The String method of Sequence is recreating the work that Sprint already does for slices. We can share the effort if we convert the Sequence to a plain []int before calling Sprint.
